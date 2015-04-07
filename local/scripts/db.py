@@ -1,6 +1,11 @@
-import redis
+#!/usr/bin/env python
 
-pool = redis.ConnectionPool(host="localhost", port=6379, db=0)
+# import global
+import redis
+# import local
+import config
+
+pool = redis.ConnectionPool(host=config.REDIS_HOST, port=config.REDIS_PORT, db=config.REDIS_DATABASE)
 r = redis.Redis(connection_pool=pool)
 # test connection, it will raise error, if connection is refused
 r.ping()
@@ -36,8 +41,23 @@ def addSimilarSongs(songid, similarSongs):
         pipe.sadd(similarSongKey, similar)
     pipe.execute()
 
+# ALBUM INFO
 def addAlbumInfo(albumid, info):
     # adds album info
     albuminfoKey = "%s:albuminfo" %(albumid)
     pipe = r.pipeline()
     pipe.hmset(albuminfoKey, info).execute()
+
+def getAlbumInfo(albumid):
+    albuminfoKey = "%s:albuminfo" %(albumid)
+    return r.hgetall(albuminfoKey)
+
+# ALBUM LOOKUP
+def setAlbumLookup(albumid, album, artist):
+    hashKey = "%s###%s:lookup" %(album.lower(), artist.lower())
+    pipe = r.pipeline()
+    pipe.set(hashKey, albumid).execute()
+
+def lookupAlbumId(album, artist):
+    hashKey = "%s###%s:lookup" %(album.lower(), artist.lower())
+    return r.get(hashKey)

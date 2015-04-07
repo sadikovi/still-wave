@@ -1,16 +1,8 @@
-"""
-http://pandora.com/json/music/album/daft-punk/tron-legacy?explicit=false
-http://pandora.com/json/music/album/3931eecf9f1cc56f?explicit=false
-http://www.pandora.com/json/music/artist/m83?explicit=false
-http://pandora.com/json/music/song/daft-punk/tron-legacy/tron-legacy-end-titles?explicit=false
-
-
-http://ws.audioscrobbler.com/2.0/?method=album.search&album=beautiful-tragedy&api_key=c6023aeb55b72d170f999dd3461369e4&format=json
-"""
+#!/usr/bin/env python
 
 import urllib2
 import urllib
-import misc
+import local.scripts.misc as misc
 
 def sendGet(url, params):
     if params:

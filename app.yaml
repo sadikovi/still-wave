@@ -5,11 +5,18 @@ api_version: 1
 threadsafe: true
 
 handlers:
-- url: /
+- url: /api/.*
   script: app.application
 
-- url: /index\.html
-  script: app.application
+- url: /images/(.*\.(gif|png|jpg))$
+  static_files: static/images/\1
+  upload: static/images/.*\.(gif|png|jpg)$
+  http_headers:
+    Access-Control-Allow-Origin: self
+
+# dummy login and logout
+- url: /(login|logout)$
+  script: auth.application
 
 libraries:
 - name: webapp2

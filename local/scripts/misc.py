@@ -1,5 +1,8 @@
+#!/usr/bin/env python
+
 from types import UnicodeType
 import json
+import urllib2
 
 def _decode_dict(data):
     for key in data.keys():
@@ -19,3 +22,7 @@ def toJson(str, decode=_decode_dict):
 def getSharUrlId(shareUrl):
     pieces = shareUrl.split("/")
     return pieces[-1] if len(pieces) > 0 else None
+
+def unquoteParam(param):
+    raw = str(param).strip()
+    return urllib2.unquote(raw)
