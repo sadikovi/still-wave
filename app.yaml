@@ -1,0 +1,16 @@
+application: bitter-glitter
+version: 0-0-1
+runtime: python27
+api_version: 1
+threadsafe: true
+
+handlers:
+- url: /
+  script: app.application
+
+- url: /index\.html
+  script: app.application
+
+libraries:
+- name: webapp2
+  version: latest
