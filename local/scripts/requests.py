@@ -5,8 +5,7 @@ import urllib
 import local.scripts.misc as misc
 
 def sendGet(url, params):
-    if params:
-        url = url+"?"+urllib.urlencode(params.items(), True)
+    url = url+"?"+urllib.urlencode(params.items(), True) if params else url
     try:
         request = urllib2.Request(url)
         response = urllib2.urlopen(request)
@@ -17,6 +16,7 @@ def sendGet(url, params):
             "code": httperror.code
         }
     except urllib2.URLError as urlerror:
+        print urlerror
         return {
             "status": "error",
             "msg": urlerror.reason,
@@ -30,7 +30,6 @@ def sendGet(url, params):
         }
     else:
         return {"status": "success", "code": 200, "data": response.read()}
-
 
 def searchAlbum(query):
     lastfmUrl = "http://ws.audioscrobbler.com/2.0/"

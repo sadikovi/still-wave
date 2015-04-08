@@ -1,4 +1,4 @@
-application: bitter-glitter
+application: still-wave
 version: 0-0-1
 runtime: python27
 api_version: 1
@@ -8,9 +8,41 @@ handlers:
 - url: /api/.*
   script: app.application
 
+# index webpage handler
+- url: /
+  static_files: static/index.html
+  upload: static/index.html
+  http_headers:
+    Access-Control-Allow-Origin: self
+
+- url: /index\.html
+  static_files: static/index.html
+  upload: static/index.html
+  http_headers:
+    Access-Control-Allow-Origin: self
+
+# resources handlers
 - url: /images/(.*\.(gif|png|jpg))$
   static_files: static/images/\1
   upload: static/images/.*\.(gif|png|jpg)$
+  http_headers:
+    Access-Control-Allow-Origin: self
+
+- url: /stylesheets/(.*\.(less|css|eot|otf|svg|ttf|woff|woff2))$
+  static_files: static/stylesheets/\1
+  upload: static/stylesheets/(.*\.(less|css|eot|otf|svg|ttf|woff|woff2))$
+  http_headers:
+    Access-Control-Allow-Origin: self
+
+- url: /scripts/(.*\.(js|coffee))$
+  static_files: static/scripts/\1
+  upload: static/scripts/(.*\.(js|coffee))$
+  http_headers:
+    Access-Control-Allow-Origin: self
+
+- url: /fonts/(.*\.(ttf))$
+  static_files: static/fonts/\1
+  upload: static/fonts/(.*\.(ttf))$
   http_headers:
     Access-Control-Allow-Origin: self
 

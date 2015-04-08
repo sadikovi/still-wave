@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Still Wave</title>
+    <link rel="stylesheet/less" type="text/css" href="/stylesheets/font.less">
+    <link rel="stylesheet/less" type="text/css" href="/stylesheets/text.less">
+    <link rel="stylesheet/less" type="text/css" href="/stylesheets/utility.less">
+    <link rel="stylesheet" type="text/css" href="/stylesheets/semantic.min.css">
+    <script src="http://cdnjs.cloudflare.com/ajax/libs/less.js/2.3.1/less.min.js"></script>
+</head>
+<body>
+    <div class="ui grid">
+        <div class="ui ten wide centered column">
+            <div class="ui inverted teal segment pl-margin-large-top">
+                <div class="ui fluid massive transparent inverted left icon action input" id="sw-search-box">
+                    <input type="text" placeholder="Search..." id="sw-search-box-input">
+                    <i class="search icon"></i>
+                </div>
+            </div>
+            <div class="ui segment" id="sw-search-results">
+            </div>
+        </div>
+    </div>
+    <script src="http://coffeescript.org/extras/coffee-script.js"></script>
+    <script type="text/coffeescript" src="/scripts/loader.coffee"></script>
+    <script type="text/coffeescript" src="/scripts/mapper.coffee"></script>
+    <script type="text/coffeescript" src="/scripts/util.coffee"></script>
+    <script type="text/coffeescript" src="/scripts/index.coffee"></script>
+</body>
+</html>
