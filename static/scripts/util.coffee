@@ -26,12 +26,14 @@ class Util
         else
             elem['on'+event] = null
 
-    addClass: (elem, cls) ->
-        elem.className += ' '+cls unless cls in elem.className.split ' '
+    addClass: (elem, classes...) ->
+        c = elem.className.split ' '
+        m = c.concat (x for x in classes when x and x not in c)
+        elem.className = m.join ' '
 
-    removeClass: (elem, cls) ->
-        b = (x for x in elem.className.split(' ') when x != cls)
-        elem.className = b.join ' '
+    removeClass: (elem, classes...) ->
+        c = elem.className.split ' '
+        elem.className = (x for x in c when x not in classes).join ' '
 
     hasClass: (elem, cls) ->
         return cls in elem.className.split ' '
@@ -39,6 +41,8 @@ class Util
     quote: (str) ->
         return encodeURIComponent(str).replace /[!'()*]/g, (c) ->
             return '%' + c.charCodeAt(0).toString(16)
+
+    isArray: (obj) -> Array.isArray(obj) or {}.toString.call(obj) is '[object Array]'
 
 # init global util
 @util ?= new Util

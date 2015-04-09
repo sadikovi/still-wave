@@ -23,12 +23,13 @@ class SearchApi(webapp2.RequestHandler):
             self.response.out.write(json.dumps(jsonobj))
         else:
             query = misc.unquoteParam(self.request.get("q"))
+            page = misc.unquoteParam(self.request.get("p"))
             if not query:
                 jsonobj = {"status": "error", "msg": "Query is empty or undefined", "code": 400}
                 self.response.set_status(400)
                 self.response.out.write(json.dumps(jsonobj))
             else:
-                res = manager.searchAlbum(query)
+                res = manager.searchAlbum(user.user_id(), query, page)
                 self.response.set_status(res["code"])
                 self.response.out.write(json.dumps(res))
 
@@ -59,7 +60,8 @@ class LikeApi(webapp2.RequestHandler):
         else:
             albumid = misc.unquoteParam(self.request.get("albumid"))
             # check album and artist
-            res = manager.like(user.user_id(), albumid)
+            uid = user.user_id()
+            res = manager.like(uid, albumid)
             self.response.set_status(res["code"])
             self.response.out.write(json.dumps(res))
 
@@ -78,9 +80,25 @@ class DislikeApi(webapp2.RequestHandler):
             self.response.set_status(res["code"])
             self.response.out.write(json.dumps(res))
 
+class ResetApi(webapp2.RequestHandler):
+    def get(self):
+        self.response.headers['Content-Type'] = "application/json"
+        user = users.get_current_user()
+        if not user:
+            jsonobj = {"status": "error", "msg": "Not authenticated", "code": 401}
+            self.response.set_status(401)
+            self.response.out.write(json.dumps(jsonobj))
+        else:
+            albumid = misc.unquoteParam(self.request.get("albumid"))
+            # check album and artist
+            res = manager.reset(user.user_id(), albumid)
+            self.response.set_status(res["code"])
+            self.response.out.write(json.dumps(res))
+
 application = webapp2.WSGIApplication([
     ('/api/search', SearchApi),
     ('/api/exists', ExistsApi),
     ('/api/like', LikeApi),
-    ('/api/dislike', DislikeApi)
+    ('/api/dislike', DislikeApi),
+    ('/api/reset', ResetApi)
 ], debug=True)

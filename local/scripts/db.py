@@ -15,28 +15,37 @@ class DB(object):
         self._redis = _redis
 
     # like album
-    def likeAlbum(self, userid, albumid):
+    def likeAlbum(self, _userid_, albumid):
         # remove song (if exists) from disliked and add it to liked
         # create hashkeys
-        dislikedKey = "%s:disliked" %(useid); likedKey = "%s:liked" %(useid)
+        dislikedKey, likedKey = [_userid_+":disliked", _userid_+":liked"]
         # prepare pipeline
         pipe = self._redis.pipeline()
         pipe.srem(dislikedKey, albumid).sadd(likedKey, albumid).execute()
 
     # dislike album
-    def dislikeAlbum(self, useid, albumid):
+    def dislikeAlbum(self, _userid_, albumid):
         # remove song (if exists) from liked and add it to dislked
         # create hashkeys
-        dislikedKey = "%s:disliked" %(useid); likedKey = "%s:liked" %(useid)
+        dislikedKey, likedKey = [_userid_+":disliked", _userid_+":liked"]
         # prepare pipeline
         pipe = self._redis.pipeline()
         pipe.srem(likedKey, albumid).sadd(dislikedKey, albumid).execute()
 
-    # check if user likes album
-    def userLikesAlbum(self, userid, albumid):
+    # reset album, so it is not in liked, nor disliked
+    def resetAlbum(self, _userid_, albumid):
         # create hashkeys
-        dislikedKey = "%s:disliked" %(userid); likedKey = "%s:liked" %(userid)
+        dislikedKey, likedKey = [_userid_+":disliked", _userid_+":liked"]
+        # prepare pipeline
+        pipe = self._redis.pipeline()
+        pipe.srem(likedKey, albumid).srem(dislikedKey, albumid).execute()
+
+    # check if user likes album
+    def userLikesAlbum(self, _userid_, albumid):
+        # create hashkeys
+        dislikedKey, likedKey = [_userid_+":disliked", _userid_+":liked"]
         like = self._redis.sismember(likedKey, albumid)
+        print _userid_, albumid, like
         dislike = self._redis.sismember(dislikedKey, albumid)
         # user likes or dislikes, if album is not in the sets, returns None
         if like:
@@ -48,14 +57,14 @@ class DB(object):
 
     # add song to album
     def addSongToAlbum(self, albumid, songid):
-        albumKey = "%s:songs" %(albumid)
+        albumKey = albumid+":songs"
         pipe = self._redis.pipeline()
         pipe.sadd(albumKey, songid).execute()
 
     # add list of similar songs
     def addSimilarSongs(self, songid, similarSongs):
         # add list of similar songs
-        similarSongKey = "%s:similar" %(songid)
+        similarSongKey = songid+":similar"
         # prepare pipeline
         pipe = self._redis.pipeline()
         for similar in similarSongs:
@@ -65,12 +74,12 @@ class DB(object):
     # ALBUM INFO
     def addAlbumInfo(self, albumid, info):
         # adds album info
-        albuminfoKey = "%s:albuminfo" %(albumid)
+        albuminfoKey = albumid+":albuminfo"
         pipe = self._redis.pipeline()
         pipe.hmset(albuminfoKey, info).execute()
 
     def getAlbumInfo(self, albumid):
-        albuminfoKey = "%s:albuminfo" %(albumid)
+        albuminfoKey = albumid+":albuminfo"
         return self._redis.hgetall(albuminfoKey)
 
     # ALBUM LOOKUP

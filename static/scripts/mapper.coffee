@@ -4,11 +4,12 @@ class Mapper
     # just creates element and assigns to parent
     createElement: (type, parent) ->
         t = document.createElement type
-        parent.appendChild t
+        parent.appendChild t if parent
+        return t
 
     # parses map for parent specified
     # does not do anything, if map or parent is undefined
-    parseMapForParent: (map, parent, assign=false) ->
+    parseMapForParent: (map, parent) =>
         # mappers
         mprs =
             type: 'type'
@@ -22,11 +23,15 @@ class Mapper
             optionselected: 'optionselected'
             children: 'children'
         # return of something is wrong
-        return false unless map and parent
-        # map can be object or array
-        if mprs.type of map
+        return false unless map
+        # map can be object or array, or DOM element
+        if "nodeName" of map
+            # hack - add DOM element
+            c = map
+            parent.appendChild c if parent
+        else if mprs.type of map
             # create object and add to parent
-            c = @.createElement map[mprs.type], parent
+            c = @createElement map[mprs.type], parent
             c.id = map[mprs.id] if mprs.id of map
             c.className = map[mprs.cls] if mprs.cls of map
             c.innerHTML = map[mprs.title] if mprs.title of map
@@ -36,11 +41,11 @@ class Mapper
             c.value = map[mprs.inputvalue] if mprs.inputvalue of map
             c.type = map[mprs.inputtype] if mprs.inputtype of map
             c.selected = map[mprs.optionselected] if mprs.optionselected of map
-            # assign element back to map if permitted
-            map._element_ = c if assign
             @parseMapForParent map[mprs.children], c if mprs.children of map
         else
             @parseMapForParent item, parent for item in map
+        # return element
+        return c
 
 # create global mapper
 @mapper ?= new Mapper

@@ -31,14 +31,15 @@ def sendGet(url, params):
     else:
         return {"status": "success", "code": 200, "data": response.read()}
 
-def searchAlbum(query):
+def searchAlbum(query, page, limit):
     lastfmUrl = "http://ws.audioscrobbler.com/2.0/"
     params = {
         "method": "album.search",
         "album": query,
+        "page": page,
         "api_key": "c6023aeb55b72d170f999dd3461369e4",
         "format": "json",
-        "limit": 10
+        "limit": limit
     }
     res = sendGet(lastfmUrl, params)
     if res["status"] == "success":
