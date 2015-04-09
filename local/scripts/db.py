@@ -4,21 +4,28 @@
 import redis
 # import local
 import config
+from local.scripts.music import Album
 
 pool = redis.ConnectionPool(host=config.REDIS_HOST, port=config.REDIS_PORT, db=config.REDIS_DATABASE)
 r = redis.Redis(connection_pool=pool)
-# test connection, it will raise error, if connection is refused
-r.ping()
 
 class DB(object):
     def __init__(self, _redis):
         self._redis = _redis
 
+    def ping(self):
+        # test connection, it will raise error, if connection is refused
+        try:
+            self._redis.ping()
+        except:
+            return False
+        else:
+            return True
+
     # like album
     def likeAlbum(self, _userid_, albumid):
         # remove song (if exists) from disliked and add it to liked
-        # create hashkeys
-        dislikedKey, likedKey = [_userid_+":disliked", _userid_+":liked"]
+        dislikedKey, likedKey = _userid_+":disliked", _userid_+":liked"
         # prepare pipeline
         pipe = self._redis.pipeline()
         pipe.srem(dislikedKey, albumid).sadd(likedKey, albumid).execute()
@@ -26,8 +33,7 @@ class DB(object):
     # dislike album
     def dislikeAlbum(self, _userid_, albumid):
         # remove song (if exists) from liked and add it to dislked
-        # create hashkeys
-        dislikedKey, likedKey = [_userid_+":disliked", _userid_+":liked"]
+        dislikedKey, likedKey = _userid_+":disliked", _userid_+":liked"
         # prepare pipeline
         pipe = self._redis.pipeline()
         pipe.srem(likedKey, albumid).sadd(dislikedKey, albumid).execute()
@@ -35,7 +41,7 @@ class DB(object):
     # reset album, so it is not in liked, nor disliked
     def resetAlbum(self, _userid_, albumid):
         # create hashkeys
-        dislikedKey, likedKey = [_userid_+":disliked", _userid_+":liked"]
+        dislikedKey, likedKey = _userid_+":disliked", _userid_+":liked"
         # prepare pipeline
         pipe = self._redis.pipeline()
         pipe.srem(likedKey, albumid).srem(dislikedKey, albumid).execute()
@@ -43,9 +49,8 @@ class DB(object):
     # check if user likes album
     def userLikesAlbum(self, _userid_, albumid):
         # create hashkeys
-        dislikedKey, likedKey = [_userid_+":disliked", _userid_+":liked"]
+        dislikedKey, likedKey = _userid_+":disliked", _userid_+":liked"
         like = self._redis.sismember(likedKey, albumid)
-        print _userid_, albumid, like
         dislike = self._redis.sismember(dislikedKey, albumid)
         # user likes or dislikes, if album is not in the sets, returns None
         if like:
@@ -71,23 +76,42 @@ class DB(object):
             pipe.sadd(similarSongKey, similar)
         pipe.execute()
 
-    # ALBUM INFO
-    def addAlbumInfo(self, albumid, info):
-        # adds album info
-        albuminfoKey = albumid+":albuminfo"
+    # get album as Album instance
+    def getAlbum(self, id=None, album=None):
+        if not id and not album:
+            return None
+        albumid = id or album.id()
+        if not albumid:
+            # do lookup first
+            lookupKey = "%s###%s:lookup" %(album.name().lower(), album.artist().lower())
+            albumid = self._redis.get(lookupKey)
+        # fetch album info
+        key = "%s:albuminfo" %(albumid)
+        info = self._redis.hgetall(key)
+        if info:
+            album = Album(info["id"], info["name"], info["artist"], info["arturl"], info["trackscnt"], None)
+            # TODO: get songs
+        return album
+
+    # add album as Album instance
+    def addAlbum(self, album):
+        if not album or not album.id():
+            return album
+        # add album to database and lookup
+        info = {
+            "id": album.id(),
+            "name": album.name(),
+            "artist": album.artist(),
+            "arturl": album.arturl(),
+            "trackscnt": album.trackscnt()
+        }
+        key = "%s:albuminfo" %(album.id())
         pipe = self._redis.pipeline()
-        pipe.hmset(albuminfoKey, info).execute()
-
-    def getAlbumInfo(self, albumid):
-        albuminfoKey = albumid+":albuminfo"
-        return self._redis.hgetall(albuminfoKey)
-
-    # ALBUM LOOKUP
-    def setAlbumLookup(self, albumid, album, artist):
-        hashKey = "%s###%s:lookup" %(album.lower(), artist.lower())
+        pipe.hmset(key, info).execute()
+        # add lookup
+        lookupKey = "%s###%s:lookup" %(album.name().lower(), album.artist().lower())
         pipe = self._redis.pipeline()
-        pipe.set(hashKey, albumid).execute()
-
-    def lookupAlbumId(self, album, artist):
-        hashKey = "%s###%s:lookup" %(album.lower(), artist.lower())
-        return self._redis.get(hashKey)
+        pipe.set(lookupKey, album.id()).execute()
+        # add songs
+        for song in album.songs():
+            self.addSongToAlbum(album.id(), song.id())

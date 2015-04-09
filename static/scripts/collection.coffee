@@ -1,3 +1,4 @@
+# just collection of objects to map as DOM elements
 class Collection
     constructor: ->
 

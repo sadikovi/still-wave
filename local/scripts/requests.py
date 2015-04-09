@@ -3,6 +3,7 @@
 import urllib2
 import urllib
 import local.scripts.misc as misc
+from local.scripts.result import Error, Success
 
 def sendGet(url, params):
     url = url+"?"+urllib.urlencode(params.items(), True) if params else url
@@ -10,26 +11,13 @@ def sendGet(url, params):
         request = urllib2.Request(url)
         response = urllib2.urlopen(request)
     except urllib2.HTTPError as httperror:
-        return {
-            "status": "error",
-            "msg": httperror.reason,
-            "code": httperror.code
-        }
+        return Error(httperror.code, httperror.reason)
     except urllib2.URLError as urlerror:
-        print urlerror
-        return {
-            "status": "error",
-            "msg": urlerror.reason,
-            "code": 500
-        }
+        return Error(500, urlerror.reason)
     except BaseException as e:
-        return {
-            "status": "error",
-            "msg": "Fatal: %s" %(str(e)),
-            "code": 500
-        }
+        return Error(500, "Fatal: %s" %(str(e)))
     else:
-        return {"status": "success", "code": 200, "data": response.read()}
+        return Success(response.read())
 
 def searchAlbum(query, page, limit):
     lastfmUrl = "http://ws.audioscrobbler.com/2.0/"
@@ -42,36 +30,32 @@ def searchAlbum(query, page, limit):
         "limit": limit
     }
     res = sendGet(lastfmUrl, params)
-    if res["status"] == "success":
-        obj = misc.toJson(res["data"])
-        res["data"] = obj
+    if type(res) is Success:
+        res.setData(misc.toJson(res.data()))
     return res
 
-def loadAlbumInfo(artist, album):
+def loadAlbumInfo(album, artist):
     # TODO: escape artist and album
-    [artist, album] = [urllib2.quote(artist), urllib2.quote(album)]
+    artist, album = urllib2.quote(artist), urllib2.quote(album)
     pandoraUrl = "http://pandora.com/json/music/album/"+artist+"/"+album
     params = {"explicit": "false"}
     res = sendGet(pandoraUrl, params)
-    if res["status"] == "success":
-        obj = misc.toJson(res["data"])
-        res["data"] = obj
+    if type(res) is Success:
+        res.setData(misc.toJson(res.data()))
     return res
 
 def loadAlbumById(albumid):
     pandoraUrl = "http://pandora.com/json/music/album/"+albumid
     params = {"explicit": "false"}
     res = sendGet(pandoraUrl, params)
-    if res["status"] == "success":
-        obj = misc.toJson(res["data"])
-        res["data"] = obj
+    if type(res) is Success:
+        res.setData(misc.toJson(res()))
     return res
 
 def loadSongById(songid):
     pandoraUrl = "http://pandora.com/json/music/song/"+songid
     params = {"explicit": "false"}
     res = sendGet(pandoraUrl, params)
-    if res["status"] == "success":
-        obj = misc.toJson(res["data"])
-        res["data"] = obj
+    if type(res) is Success:
+        res.setData(misc.toJson(res()))
     return res

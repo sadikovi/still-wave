@@ -73,8 +73,7 @@ searchQuery = (query, page=1) ->
             for album in albums
                 # build control panel
                 controlPanel = @collection.controlPanel()
-                exists = album.exists
-                if exists["status"] == "error"
+                if not album.id
                     # return label "Not found on Pandora"
                     label = @collection.notFoundLabel()
                     controlPanel.children.push label
@@ -87,15 +86,14 @@ searchQuery = (query, page=1) ->
                     # creating DOM control panel
                     controlPanel = @mapper.parseMapForParent controlPanel, null
                     # adding albumid as attribute
-                    controlPanel._albumid = exists.data.albumid
+                    controlPanel._albumid = album.id
                     # like and dislike buttons, status
                     [controlPanel._like, controlPanel._dislike, controlPanel._status] = [like, dislike, status]
                     like._controlPanel = dislike._controlPanel = status._controlPanel = controlPanel
                     # make them liked or disliked once they are loaded
-                    _likedFlag = exists.data.likedByUser
-                    if _likedFlag == true
+                    if album.liked == true
                         makeActive controlPanel._like, controlPanel._dislike, _likeActiveTitle, _dislikeTitle, false
-                    if _likedFlag == false
+                    if album.liked == false
                         makeActive controlPanel._dislike, controlPanel._like, _dislikeActiveTitle, _likeTitle, false
                     # add event listeners
                     @util.addEventListener like, "click", (e)=>

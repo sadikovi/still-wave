@@ -1,8 +1,9 @@
 from types import DictType
-import config
 import local.scripts.requests as req
 import local.scripts.misc as misc
 import local.scripts.db as database
+from local.scripts.result import Success, Error
+from local.scripts.music import Album, Song
 
 
 class Manager(object):
@@ -10,122 +11,96 @@ class Manager(object):
         self.db = database.DB(database.r)
 
     def searchAlbum(self, _userid_, query, page):
+        if not self.db.ping():
+            return Error(500, "DB connection refused")
         if len(query) == 0:
-            return {"status": "success", "code": 200, "data": []}
+            return Success([])
         else:
             # set limit of results per page
-            limit, totalpages, offset = 10, 1, 2
+            limit, maxpage, offset = 10, 1, 2
             # clean page
             page = misc.toUnsignedInt(page) or 1
             page = page if page > 0 else 1
             res = req.searchAlbum(query, page, limit)
-            if res["status"] == "success":
-                data = res["data"]["results"]
+            if type(res) is Success:
+                data = res.data()["results"]
                 # reset page if necessary
                 total = misc.toUnsignedInt(data["opensearch:totalResults"])
                 # total pages and current page
                 maxpage = 1 if total is None else misc.ceilDivison(total, limit)
                 page = 1 if page is None or maxpage < page else page
-                print page, maxpage
-                pages = misc.pages(page, maxpage, 5)
+                pages = misc.pages(page, maxpage, frame=5)
                 # create albums and jsonobj
-                albums = data["albummatches"]["album"] if "album" in data["albummatches"] else []
-                albums = [albums] if type(albums) is DictType else albums
-                jsonobj = []
-                for _i, album in enumerate(albums):
-                    images = album["image"]
-                    arturl = images[-1]["#text"] if len(images) > 0 else config.DEFAULT_ALBUM
-                    obj = {
-                        "name": album["name"],
-                        "artist": album["artist"],
-                        "arturl": arturl
-                    }
+                items = data["albummatches"]["album"] if "album" in data["albummatches"] else []
+                items = [items] if type(items) is DictType else items
+                albums = []
+                for item in items:
+                    images = item["image"]
+                    arturl = images[-1]["#text"] if len(images) > 0 else None
+                    # build album
+                    _album = Album(None, item["name"], item["artist"], arturl)
                     # perform search in database / Pandora
-                    ex = self.exists(_userid_, album["artist"], album["name"])
-                    obj["exists"] = ex
-                    jsonobj.append(obj)
+                    try:
+                        _album = self.exists(_userid_, _album)
+                    except BaseException as e:
+                        print "[!] @exists error: %s" %(str(e))
+                    albums.append(_album.json())
                 # merge data
-                res["data"] = {"page": page, "maxpage": maxpage, "pages": pages, "results": jsonobj}
+                res.setData({"page": page, "maxpage": maxpage, "pages": pages, "results": albums})
             return res
 
-    def exists(self, _userid_, artist, album):
-        # result
-        res = {"status": "", "code": -1, "data": {}}
-        try:
-            # look up album id in database
-            albumid = self.db.lookupAlbumId(album, artist)
-            if albumid is None:
-                print "Loading from Pandora: %s - %s" %(album, artist)
-                raw = req.loadAlbumInfo(artist, album)
-                if raw["status"] == "success":
-                    if len(raw["data"]) == 0:
-                        raise StandardError("Album not found")
-                    explorer = raw["data"]["albumExplorer"]
-                    # remove weird last Data_track from album
-                    tracks = [x for x in explorer["tracks"] if x["@songTitle"] != "Data_track"]
-                    # extract album id
-                    albumid = misc.getSharUrlId(explorer["@shareUrl"])
-                    info = {
-                        "id": albumid,
-                        "artist": explorer["@artistName"],
-                        "album": explorer["@albumTitle"],
-                        "arturl": explorer["@albumArtUrl"],
-                        "tracks": len(tracks)
-                    }
-                    # store info in database
-                    self.db.addAlbumInfo(albumid, info)
-                    self.db.setAlbumLookup(albumid, album, artist)
-                    for song in tracks:
-                        songid = misc.getSharUrlId(song["@shareUrl"])
-                        self.db.addSongToAlbum(albumid, songid)
-                    # consolidate data and return
-                    like = self.db.userLikesAlbum(_userid_, albumid)
-                    raw["data"] = {"albumid": albumid, "exists": True, "likedByUser": like}
-                # reassign updated raw to res
-                res = raw
+    def exists(self, _userid_, album=None):
+        _album = album or Album(None, "", "")
+        print "[!] Try loading from Redis: %s - %s" %(_album.artist(), _album.name())
+        _album = self.db.getAlbum(album=_album)
+        if not _album or not _album.id():
+            print "[!] Not found in Redis, loading from Pandora: %s - %s" %(_album.artist(), _album.name())
+            # send request to Pandora
+            res = req.loadAlbumInfo(_album.name(), _album.artist())
+            if not res.data() or len(res.data()) == 0:
+                # not found on Pandora
+                print "Not found on Pandora"
             else:
-                print "Loading from Redis: %s - %s" %(album, artist)
-                like = self.db.userLikesAlbum(_userid_, albumid)
-                [res["status"], res["code"]] = ["success", 200]
-                res["data"] = {"albumid": albumid, "exists": True, "likedByUser": like}
-        except BaseException as e:
-            # TODO: log error
-            [res["status"], res["code"], res["msg"]] = ["error", 400, str(e)]
-        finally:
-            return res
+                explorer = res.data()["albumExplorer"]
+                # remove weird last Data_track from album
+                tracks = [x for x in explorer["tracks"] if x["@songTitle"] != "Data_track"]
+                # extract album id
+                albumid = misc.getSharUrlId(explorer["@shareUrl"])
+                # update album
+                _album.update(albumid, None, len(tracks), None)
+                for track in tracks:
+                    songid = misc.getSharUrlId(track["@shareUrl"])
+                    _album.addSong(Song(songid))
+                # add album to database
+                self.db.addAlbum(_album)
+        # like album
+        _album.setLiked(self.db.userLikesAlbum(_userid_, _album.id()))
+        # return updated album
+        return _album
 
     def like(self, _userid_, albumid):
         # like album
-        res = {"status": "", "code": -1, "data": {}}
         try:
             self.db.likeAlbum(_userid_, albumid)
-            res["status"], res["code"], res["data"] = ["success", 200, True]
+            return Success(True)
         except BaseException as e:
             # TODO: log error
-            res["status"], res["code"], res["msg"] = ["error", 400, str(e)]
-        finally:
-            return res
+            return Error(400, str(e))
 
     def dislike(self, _userid_, albumid):
         # dislike album
-        res = {"status": "", "code": -1, "data": {}}
         try:
             self.db.dislikeAlbum(_userid_, albumid)
-            res["status"], res["code"], res["data"] = ["success", 200, True]
+            return Success(True)
         except BaseException as e:
             # TODO: log error
-            res["status"], res["code"], res["msg"] = ["error", 400, str(e)]
-        finally:
-            return res
+            return Error(400, str(e))
 
     def reset(self, _userid_, albumid):
         # reset album
-        res = {"status": "", "code": -1, "data": {}}
         try:
             self.db.resetAlbum(_userid_, albumid)
-            res["status"], res["code"], res["data"] = ["success", 200, True]
+            return Success(True)
         except BaseException as e:
             # TODO: log error
-            res["status"], res["code"], res["msg"] = ["error", 400, str(e)]
-        finally:
-            return res
+            return Error(400, str(e))
