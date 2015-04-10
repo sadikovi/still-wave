@@ -7,8 +7,8 @@ from local.scripts.music import Album, Song
 
 
 class Manager(object):
-    def __init__(self):
-        self.db = database.DB(database.r)
+    def __init__(self, db=database.r):
+        self.db = database.DB(db)
 
     def searchAlbum(self, _userid_, query, page):
         if not self.db.ping():
@@ -43,13 +43,13 @@ class Manager(object):
                     try:
                         _album = self.exists(_userid_, _album)
                     except BaseException as e:
-                        print "[!] @exists error: %s" %(str(e))
+                        print "[!] Fatal: @exists error: %s" %(str(e))
                     albums.append(_album.json())
                 # merge data
                 res.setData({"page": page, "maxpage": maxpage, "pages": pages, "results": albums})
             return res
 
-    def exists(self, _userid_, album=None):
+    def exists(self, _userid_, album=None, pandoraNames=False, saveIfNotFound=True):
         _album = album or Album(None, "", "")
         print "[!] Try loading from Redis: %s - %s" %(_album.artist(), _album.name())
         _album = self.db.getAlbum(album=_album)
@@ -60,14 +60,26 @@ class Manager(object):
             if not res.data() or len(res.data()) == 0:
                 # not found on Pandora
                 print "Not found on Pandora"
+                if saveIfNotFound:
+                    # generate fake id and push it to db
+                    albumid = "%s#%s" %("SW", misc.newId())
+                    _album.update(albumid, None, 0, None, ispandora=False)
+                    # add album to database
+                    self.db.addAlbum(_album)
             else:
                 explorer = res.data()["albumExplorer"]
                 # remove weird last Data_track from album
                 tracks = [x for x in explorer["tracks"] if x["@songTitle"] != "Data_track"]
                 # extract album id
                 albumid = misc.getSharUrlId(explorer["@shareUrl"])
+                # arturl Pandora
+                arturl = explorer["@albumArtUrl"] if "@albumArtUrl" in explorer else None
                 # update album
-                _album.update(albumid, None, len(tracks), None)
+                if pandoraNames:
+                    # it means we require Pandora data (album name and artist)
+                    _album.setName(explorer["@albumTitle"])
+                    _album.setArtist(explorer["@artistName"])
+                _album.update(albumid, arturl, len(tracks), None)
                 for track in tracks:
                     songid = misc.getSharUrlId(track["@shareUrl"])
                     _album.addSong(Song(songid))

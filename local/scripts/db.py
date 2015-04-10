@@ -4,7 +4,8 @@
 import redis
 # import local
 import config
-from local.scripts.music import Album
+from local.scripts.music import Album, Song
+import local.scripts.misc as misc
 
 pool = redis.ConnectionPool(host=config.REDIS_HOST, port=config.REDIS_PORT, db=config.REDIS_DATABASE)
 r = redis.Redis(connection_pool=pool)
@@ -29,6 +30,14 @@ class DB(object):
         # prepare pipeline
         pipe = self._redis.pipeline()
         pipe.srem(dislikedKey, albumid).sadd(likedKey, albumid).execute()
+
+    def getLikedAlbumIds(self, _userid_):
+        likedKey = _userid_+":liked"
+        return self._redis.smembers(likedKey)
+
+    def getDislikedAlbumIds(self, _userid_):
+        dislikedKey = _userid_+":disliked"
+        return self._redis.smembers(dislikedKey)
 
     # dislike album
     def dislikeAlbum(self, _userid_, albumid):
@@ -62,9 +71,18 @@ class DB(object):
 
     # add song to album
     def addSongToAlbum(self, albumid, songid):
-        albumKey = albumid+":songs"
+        albumKey = "%s:songs" %(albumid)
+        songKey = "%s:albumforsong" %(songid)
         pipe = self._redis.pipeline()
-        pipe.sadd(albumKey, songid).execute()
+        pipe.sadd(albumKey, songid).set(songKey, albumid).execute()
+
+    def getSongsForAlbum(self, albumid):
+        albumKey = "%s:songs" %(albumid)
+        return self._redis.smembers(albumKey)
+
+    def getAlbumForSong(self, songid):
+        songKey = "%s:albumforsong" %(songid)
+        return self._redis.get(songKey)
 
     # add list of similar songs
     def addSimilarSongs(self, songid, similarSongs):
@@ -72,9 +90,17 @@ class DB(object):
         similarSongKey = songid+":similar"
         # prepare pipeline
         pipe = self._redis.pipeline()
+        pipe.sadd(similarSongKey, "")
         for similar in similarSongs:
-            pipe.sadd(similarSongKey, similar)
+            if similar:
+                pipe.sadd(similarSongKey, similar)
         pipe.execute()
+
+    def getSimilarSongs(self, songid):
+        similarSongKey = songid+":similar"
+        if self._redis.exists(similarSongKey):
+            return self._redis.smembers(similarSongKey)
+        return None
 
     # get album as Album instance
     def getAlbum(self, id=None, album=None):
@@ -89,8 +115,13 @@ class DB(object):
         key = "%s:albuminfo" %(albumid)
         info = self._redis.hgetall(key)
         if info:
-            album = Album(info["id"], info["name"], info["artist"], info["arturl"], info["trackscnt"], None)
-            # TODO: get songs
+            album = Album(info["id"], info["name"], info["artist"], info["arturl"],
+                            int(info["trackscnt"]), liked=None,
+                            ispandora=misc.toBool(info["ispandora"]))
+            # get songs
+            songids = list(self.getSongsForAlbum(album.id()) or [])
+            for songid in songids:
+                album.addSong(Song(songid))
         return album
 
     # add album as Album instance
@@ -103,7 +134,8 @@ class DB(object):
             "name": album.name(),
             "artist": album.artist(),
             "arturl": album.arturl(),
-            "trackscnt": album.trackscnt()
+            "trackscnt": album.trackscnt(),
+            "ispandora": album.ispandora()
         }
         key = "%s:albuminfo" %(album.id())
         pipe = self._redis.pipeline()

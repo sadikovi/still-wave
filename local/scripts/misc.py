@@ -3,6 +3,8 @@
 from types import UnicodeType
 import json
 import urllib2
+import uuid
+import urlparse
 
 def _decode_dict(data):
     for key in data.keys():
@@ -23,9 +25,16 @@ def getSharUrlId(shareUrl):
     pieces = shareUrl.split("/")
     return pieces[-1] if len(pieces) > 0 else None
 
+def getUrlPath(url):
+    a = urlparse.urlparse(url)
+    return a.path if a else ""
+
 def unquoteParam(param):
     raw = str(param).strip()
     return urllib2.unquote(raw)
+
+def quoteParam(param):
+    return urllib2.quote(param)
 
 def toInt(value):
     res = None
@@ -56,3 +65,11 @@ def pages(current, max, frame):
     a = range(left-dl, right-dr+1)
     a = range(a[0]-dr, a[-1]-dl+1)
     return a
+
+def newId():
+    return uuid.uuid4().hex
+
+def toBool(value):
+    if value in ["0", "False", "false"]:
+        value = False
+    return bool(value)

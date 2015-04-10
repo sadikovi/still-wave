@@ -11,6 +11,8 @@ import config
 import local.scripts.manager as m
 import local.scripts.misc as misc
 from local.scripts.result import Error, Success
+from local.scripts.suggestions import RecommendationEngine
+
 
 manager = m.Manager()
 
@@ -96,10 +98,28 @@ class ResetApi(webapp2.RequestHandler):
             self.response.set_status(res.code())
             self.response.out.write(json.dumps(res.json()))
 
+class RecommendationsApi(webapp2.RequestHandler):
+    def get(self):
+        self.response.headers['Content-Type'] = "application/json"
+        user = users.get_current_user()
+        if not user:
+            res = Error(401, "Not authenticated")
+            self.response.set_status(res.code())
+            self.response.out.write(json.dumps(res.json()))
+        else:
+            # create engine and get recommendations
+            rengine = RecommendationEngine(user.user_id())
+            # check album and artist
+            res = rengine.getRecommendationsResult()
+            rengine = None
+            self.response.set_status(res.code())
+            self.response.out.write(json.dumps(res.json()))
+
 application = webapp2.WSGIApplication([
     ('/api/search', SearchApi),
     ('/api/exists', ExistsApi),
     ('/api/like', LikeApi),
     ('/api/dislike', DislikeApi),
-    ('/api/reset', ResetApi)
+    ('/api/reset', ResetApi),
+    ('/api/lab', RecommendationsApi)
 ], debug=True)

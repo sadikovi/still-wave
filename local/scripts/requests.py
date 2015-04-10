@@ -49,7 +49,7 @@ def loadAlbumById(albumid):
     params = {"explicit": "false"}
     res = sendGet(pandoraUrl, params)
     if type(res) is Success:
-        res.setData(misc.toJson(res()))
+        res.setData(misc.toJson(res.data()))
     return res
 
 def loadSongById(songid):
@@ -57,5 +57,5 @@ def loadSongById(songid):
     params = {"explicit": "false"}
     res = sendGet(pandoraUrl, params)
     if type(res) is Success:
-        res.setData(misc.toJson(res()))
+        res.setData(misc.toJson(res.data()))
     return res

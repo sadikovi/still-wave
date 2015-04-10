@@ -73,7 +73,7 @@ searchQuery = (query, page=1) ->
             for album in albums
                 # build control panel
                 controlPanel = @collection.controlPanel()
-                if not album.id
+                if not album.id or not album.ispandora
                     # return label "Not found on Pandora"
                     label = @collection.notFoundLabel()
                     controlPanel.children.push label
