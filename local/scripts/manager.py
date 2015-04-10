@@ -41,7 +41,7 @@ class Manager(object):
                     _album = Album(None, item["name"], item["artist"], arturl)
                     # perform search in database / Pandora
                     try:
-                        _album = self.exists(_userid_, _album)
+                        _album = self.exists(_userid_, _album, pandoraNames=True)
                     except BaseException as e:
                         print "[!] Fatal: @exists error: %s" %(str(e))
                     albums.append(_album.json())
@@ -50,28 +50,34 @@ class Manager(object):
             return res
 
     def exists(self, _userid_, album=None, pandoraNames=False, saveIfNotFound=True):
-        _album = album or Album(None, "", "")
-        print "[!] Try loading from Redis: %s - %s" %(_album.artist(), _album.name())
-        _album = self.db.getAlbum(album=_album)
-        if not _album or not _album.id():
-            print "[!] Not found in Redis, loading from Pandora: %s - %s" %(_album.artist(), _album.name())
+        if not album:
+            print "[!] Undefined album was passed. It will be skipped"
+            return None
+        # album is not None
+        albumid, lookupname, lookupartist = album.id(), album.name(), album.artist()
+        if not albumid:
+            # perform lookup
+            albumid = self.db.lookupAlbum(lookupname, lookupartist)
+        print "[!] Try loading from Redis: %s - %s" %(album.artist(), album.name())
+        _album = self.db.getAlbum(albumid) or album
+        if not _album.id():
+            print "[!] Not found in Redis, loading from Pandora"
             # send request to Pandora
-            res = req.loadAlbumInfo(_album.name(), _album.artist())
+            res = req.loadAlbumInfo(_album.name().lower(), _album.artist().lower())
             if not res.data() or len(res.data()) == 0:
                 # not found on Pandora
                 print "Not found on Pandora"
                 if saveIfNotFound:
+                    print "Saving not found album anyway..."
                     # generate fake id and push it to db
                     albumid = "%s#%s" %("SW", misc.newId())
                     _album.update(albumid, None, 0, None, ispandora=False)
-                    # add album to database
-                    self.db.addAlbum(_album)
             else:
                 explorer = res.data()["albumExplorer"]
                 # remove weird last Data_track from album
                 tracks = [x for x in explorer["tracks"] if x["@songTitle"] != "Data_track"]
                 # extract album id
-                albumid = misc.getSharUrlId(explorer["@shareUrl"])
+                albumid = misc.getShareUrlId(explorer["@shareUrl"])
                 # arturl Pandora
                 arturl = explorer["@albumArtUrl"] if "@albumArtUrl" in explorer else None
                 # update album
@@ -80,11 +86,14 @@ class Manager(object):
                     _album.setName(explorer["@albumTitle"])
                     _album.setArtist(explorer["@artistName"])
                 _album.update(albumid, arturl, len(tracks), None)
+                # add songs to album
                 for track in tracks:
-                    songid = misc.getSharUrlId(track["@shareUrl"])
+                    songid = misc.getShareUrlId(track["@shareUrl"])
                     _album.addSong(Song(songid))
-                # add album to database
-                self.db.addAlbum(_album)
+            # add lookup on old values
+            self.db.addLookup(_album.id(), lookupname, lookupartist)
+            # add album to database
+            self.db.addAlbum(_album)
         # like album
         _album.setLiked(self.db.userLikesAlbum(_userid_, _album.id()))
         # return updated album

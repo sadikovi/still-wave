@@ -21,7 +21,7 @@ def toJson(str, decode=_decode_dict):
     # parse json
     return json.loads(str, object_hook=decode)
 
-def getSharUrlId(shareUrl):
+def getShareUrlId(shareUrl):
     pieces = shareUrl.split("/")
     return pieces[-1] if len(pieces) > 0 else None
 

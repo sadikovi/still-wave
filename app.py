@@ -15,6 +15,7 @@ from local.scripts.suggestions import RecommendationEngine
 
 
 manager = m.Manager()
+rengine = RecommendationEngine()
 
 class SearchApi(webapp2.RequestHandler):
     def get(self):
@@ -107,11 +108,8 @@ class RecommendationsApi(webapp2.RequestHandler):
             self.response.set_status(res.code())
             self.response.out.write(json.dumps(res.json()))
         else:
-            # create engine and get recommendations
-            rengine = RecommendationEngine(user.user_id())
             # check album and artist
-            res = rengine.getRecommendationsResult()
-            rengine = None
+            res = rengine.recommendationsForUser(user.user_id())
             self.response.set_status(res.code())
             self.response.out.write(json.dumps(res.json()))
 
