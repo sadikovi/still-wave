@@ -30,29 +30,28 @@ class DB(object):
     # Like, dislike and reset albumid
     ############################################################
 
+    def actionByAlbum(self, _userid_, albumid, action):
+        pipe = self._redis.pipeline()
+        likedKey, dislikedKey = LikeKey(_userid_).key(), DislikeKey(_userid_).key()
+        if action == "like":
+            pipe.srem(dislikedKey, albumid).sadd(likedKey, albumid)
+        elif action == "dislike":
+            pipe.srem(likedKey, albumid).sadd(dislikedKey, albumid)
+        else:
+            pipe.srem(likedKey, albumid).srem(dislikedKey, albumid)
+        pipe.execute()
+
     # like album
     def likeAlbum(self, _userid_, albumid):
-        # remove song (if exists) from disliked and add it to liked
-        likedKey, dislikedKey = LikeKey(_userid_).key(), DislikeKey(_userid_).key()
-        # prepare pipeline
-        pipe = self._redis.pipeline()
-        pipe.srem(dislikedKey, albumid).sadd(likedKey, albumid).execute()
+        self.actionByAlbum(_userid_, albumid, "like")
 
     # dislike album
     def dislikeAlbum(self, _userid_, albumid):
-        # remove song (if exists) from liked and add it to dislked
-        likedKey, dislikedKey = LikeKey(_userid_).key(), DislikeKey(_userid_).key()
-        # prepare pipeline
-        pipe = self._redis.pipeline()
-        pipe.srem(likedKey, albumid).sadd(dislikedKey, albumid).execute()
+        self.actionByAlbum(_userid_, albumid, "dislike")
 
     # reset album, so it is not in liked, nor disliked
     def resetAlbum(self, _userid_, albumid):
-        # create hashkeys
-        likedKey, dislikedKey = LikeKey(_userid_).key(), DislikeKey(_userid_).key()
-        # prepare pipeline
-        pipe = self._redis.pipeline()
-        pipe.srem(likedKey, albumid).srem(dislikedKey, albumid).execute()
+        self.actionByAlbum(_userid_, albumid, "reset")
 
     def getLikedAlbumIds(self, _userid_):
         likedKey = LikeKey(_userid_).key()
@@ -75,6 +74,36 @@ class DB(object):
             return False
         else:
             return None
+
+    # adds userid to albumid
+    def actionUserByAlbum(self, albumid, _userid_, action):
+        pipe = self._redis.pipeline()
+        # using the same keys, but instead of userid, we pass albumid
+        likedKey, dislikedKey = LikeKey(albumid).key(), DislikeKey(albumid).key()
+        if action == "like":
+            pipe.srem(dislikedKey, _userid_).sadd(likedKey, _userid_)
+        elif action == "dislike":
+            pipe.srem(likedKey, _userid_).sadd(dislikedKey, _userid_)
+        else:
+            pipe.srem(likedKey, _userid_).srem(dislikedKey, _userid_)
+        pipe.execute()
+
+    def likeUserByAlbum(self, albumid, _userid_):
+        self.actionUserByAlbum(albumid, _userid_, "like")
+
+    def dislikeUserByAlbum(self, albumid, _userid_):
+        self.actionUserByAlbum(albumid, _userid_, "dislike")
+
+    def resetUserByAlbum(self, albumid, _userid_):
+        self.actionUserByAlbum(albumid, _userid_, "reset")
+
+    def usersLikingAlbum(self, albumid):
+        likedKey = LikeKey(albumid).key()
+        return self._redis.smembers(likedKey)
+
+    def usersDislikingAlbum(self, albumid):
+        dislikedKey = DislikeKey(albumid).key()
+        return self._redis.smembers(dislikedKey)
 
 
     ############################################################

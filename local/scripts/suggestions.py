@@ -112,20 +112,22 @@ class RecommendationEngine(object):
 
     def getRecommendations(self, _userid):
         disliked = [x.id() for x in self.getDislikedAlbums(_userid)]
+        liked = [x.id() for x in self.getLikedAlbums(_userid)]
         albumsmap, recommendations = self.getSimilarAlbumIds(_userid), []
         references = sorted(set(albumsmap.values()), reverse=True)
-        print references
         for ref in references:
-            for key, value in albumsmap.items():
-                if value == ref and key not in disliked:
-                    album = self.db.getAlbum(key)
-                    if not album:
-                        print "[!] Recommended album for key %s was None" %(key)
-                    elif len(recommendations) < self._topRatedResults:
-                        recommendations.append({"rating": ref, "item": album.json()})
-                    else:
-                        print "More than limit. Top recommendations are selected"
-                        return recommendations
+            # add recommendations only if rating is more than 1.0
+            if ref > 1:
+                for key, value in albumsmap.items():
+                    if value == ref and key not in disliked and key not in liked:
+                        album = self.db.getAlbum(key)
+                        if not album:
+                            print "[!] Recommended album for key %s was None" %(key)
+                        elif len(recommendations) < self._topRatedResults:
+                            recommendations.append({"rating": ref, "item": album.json()})
+                        else:
+                            print "More than limit. Top recommendations are selected"
+                            return recommendations
         # return recommendations with {ref - album json}
         return recommendations
 

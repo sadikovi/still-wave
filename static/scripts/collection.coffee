@@ -2,6 +2,31 @@
 class Collection
     constructor: ->
 
+    searchUnauthorised: ->
+        map =
+            type: "div"
+            cls: "ui pl-container-center compact basic segment"
+            children:
+                type: "div"
+                cls: "ui header pl-text-thin"
+                children: [
+                    img =
+                        type: "i"
+                        cls: "lock icon"
+                    content =
+                        type: "div"
+                        cls: "content"
+                        title: "Not authorised"
+                        children:
+                            type: "div"
+                            cls: "sub header"
+                            title: "You are not authorised. "
+                            children:
+                                type: "a"
+                                title: "Authorise"
+                                href: "/login"
+                ]
+
     searchFailed: (query) ->
         map =
             type: "div"

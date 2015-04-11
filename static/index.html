@@ -14,6 +14,15 @@
 <body>
     <div class="ui grid">
         <div class="ui ten wide centered column">
+            <div class="ui basic segment">
+                <div class="ui breadcrumb">
+                    <div class="section">{{username}}</div>
+                    <div class="divider">|</div>
+                    <div class="section">
+                        <a href="{{logouturl}}">Logout</a>
+                    </div>
+                </div>
+            </div>
             <div class="ui inverted teal segment pl-margin-large-top">
                 <div class="ui fluid massive transparent inverted left icon action input" id="sw-search-box">
                     <input type="text" placeholder="Search..." id="sw-search-box-input">

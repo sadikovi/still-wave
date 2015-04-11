@@ -5,6 +5,7 @@ from google.appengine.api import users
 from google.appengine.ext.webapp import template
 import webapp2
 import json
+import os
 # import local
 import projectpaths
 import config
@@ -12,10 +13,28 @@ import local.scripts.manager as m
 import local.scripts.misc as misc
 from local.scripts.result import Error, Success
 from local.scripts.suggestions import RecommendationEngine
+from local.scripts.collabfiltering import CollaborationEngine
 
 
 manager = m.Manager()
 rengine = RecommendationEngine()
+filtering = CollaborationEngine()
+
+class MainPage(webapp2.RequestHandler):
+    def get(self):
+        user = users.get_current_user()
+        if user:
+            # create template values
+            template_values = {
+                "username": user.nickname(),
+                "logouturl": "/logout"
+            }
+            # load template
+            path = os.path.join(os.path.dirname(__file__), "static", "index.html")
+            self.response.out.write(template.render(path, template_values))
+        else:
+            self.redirect("/login")
+
 
 class SearchApi(webapp2.RequestHandler):
     def get(self):
@@ -36,22 +55,6 @@ class SearchApi(webapp2.RequestHandler):
                 res = manager.searchAlbum(user.user_id(), query, page)
                 self.response.set_status(res.code())
                 self.response.out.write(json.dumps(res.json()))
-
-class ExistsApi(webapp2.RequestHandler):
-    def get(self):
-        self.response.headers['Content-Type'] = "application/json"
-        user = users.get_current_user()
-        if not user:
-            res = Error(401, "Not authenticated")
-            self.response.set_status(res.code())
-            self.response.out.write(json.dumps(res.json()))
-        else:
-            artist = misc.unquoteParam(self.request.get("artist"))
-            album = misc.unquoteParam(self.request.get("album"))
-            # check album and artist
-            res = manager.exists(user.user_id(), artist, album)
-            self.response.set_status(res.code())
-            self.response.out.write(json.dumps(res.json()))
 
 class LikeApi(webapp2.RequestHandler):
     def get(self):
@@ -113,11 +116,27 @@ class RecommendationsApi(webapp2.RequestHandler):
             self.response.set_status(res.code())
             self.response.out.write(json.dumps(res.json()))
 
+
+class FilteringApi(webapp2.RequestHandler):
+    def get(self):
+        self.response.headers['Content-Type'] = "application/json"
+        user = users.get_current_user()
+        if not user:
+            res = Error(401, "Not authenticated")
+            self.response.set_status(res.code())
+            self.response.out.write(json.dumps(res.json()))
+        else:
+            # check album and artist
+            res = filtering.recommendationsForUser(user.user_id())
+            self.response.set_status(res.code())
+            self.response.out.write(json.dumps(res.json()))
+
 application = webapp2.WSGIApplication([
     ('/api/search', SearchApi),
-    ('/api/exists', ExistsApi),
     ('/api/like', LikeApi),
     ('/api/dislike', DislikeApi),
     ('/api/reset', ResetApi),
-    ('/api/lab', RecommendationsApi)
+    ('/api/recommendations', RecommendationsApi),
+    ('/api/filtering', FilteringApi),
+    ('/.*', MainPage)
 ], debug=True)

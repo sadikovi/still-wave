@@ -144,7 +144,10 @@ searchQuery = (query, page=1) ->
         unsetLoading searchBox
         unlock searchInput
         # build map
-        @mapper.parseMapForParent @collection.searchFailed(query), searchResults
+        if status == 401
+            @mapper.parseMapForParent @collection.searchUnauthorised(), searchResults
+        else
+            @mapper.parseMapForParent @collection.searchFailed(query), searchResults
 
 # add event listener on input box
 util.addEventListener searchInput, "keypress", (e) ->

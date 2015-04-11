@@ -10,16 +10,10 @@ handlers:
 
 # index webpage handler
 - url: /
-  static_files: static/index.html
-  upload: static/index.html
-  http_headers:
-    Access-Control-Allow-Origin: self
+  script: app.application
 
 - url: /index\.html
-  static_files: static/index.html
-  upload: static/index.html
-  http_headers:
-    Access-Control-Allow-Origin: self
+  script: app.application
 
 # resources handlers
 - url: /images/(.*\.(gif|png|jpg))$

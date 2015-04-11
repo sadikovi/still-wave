@@ -103,6 +103,7 @@ class Manager(object):
         # like album
         try:
             self.db.likeAlbum(_userid_, albumid)
+            self.db.likeUserByAlbum(albumid, _userid_)
             return Success(True)
         except BaseException as e:
             # TODO: log error
@@ -112,6 +113,7 @@ class Manager(object):
         # dislike album
         try:
             self.db.dislikeAlbum(_userid_, albumid)
+            self.db.dislikeUserByAlbum(albumid, _userid_)
             return Success(True)
         except BaseException as e:
             # TODO: log error
@@ -121,6 +123,7 @@ class Manager(object):
         # reset album
         try:
             self.db.resetAlbum(_userid_, albumid)
+            self.db.resetUserByAlbum(albumid, _userid_)
             return Success(True)
         except BaseException as e:
             # TODO: log error
