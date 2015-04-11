@@ -27,10 +27,28 @@ class MainPage(webapp2.RequestHandler):
             # create template values
             template_values = {
                 "username": user.nickname(),
-                "logouturl": "/logout"
+                "logouturl": "/logout",
+                "personalurl": "/personal"
             }
             # load template
             path = os.path.join(os.path.dirname(__file__), "static", "index.html")
+            self.response.out.write(template.render(path, template_values))
+        else:
+            self.redirect("/login")
+
+
+class PersonalPage(webapp2.RequestHandler):
+    def get(self):
+        user = users.get_current_user()
+        if user:
+            # create template values
+            template_values = {
+                "username": user.nickname(),
+                "logouturl": "/logout",
+                "searchurl": "/"
+            }
+            # load template
+            path = os.path.join(os.path.dirname(__file__), "static", "personal.html")
             self.response.out.write(template.render(path, template_values))
         else:
             self.redirect("/login")
@@ -131,6 +149,21 @@ class FilteringApi(webapp2.RequestHandler):
             self.response.set_status(res.code())
             self.response.out.write(json.dumps(res.json()))
 
+
+class MyAlbumsApi(webapp2.RequestHandler):
+    def get(self):
+        self.response.headers['Content-Type'] = "application/json"
+        user = users.get_current_user()
+        if not user:
+            res = Error(401, "Not authenticated")
+            self.response.set_status(res.code())
+            self.response.out.write(json.dumps(res.json()))
+        else:
+            # check album and artist
+            res = manager.getMyAlbums(user.user_id())
+            self.response.set_status(res.code())
+            self.response.out.write(json.dumps(res.json()))
+
 application = webapp2.WSGIApplication([
     ('/api/search', SearchApi),
     ('/api/like', LikeApi),
@@ -138,5 +171,7 @@ application = webapp2.WSGIApplication([
     ('/api/reset', ResetApi),
     ('/api/recommendations', RecommendationsApi),
     ('/api/filtering', FilteringApi),
+    ('/api/myalbums', MyAlbumsApi),
+    ('/personal', PersonalPage),
     ('/.*', MainPage)
 ], debug=True)

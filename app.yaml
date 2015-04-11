@@ -12,7 +12,14 @@ handlers:
 - url: /
   script: app.application
 
+- url: /index
+  script: app.application
+
 - url: /index\.html
+  script: app.application
+
+# personal webpage handler
+- url: /personal
   script: app.application
 
 # resources handlers

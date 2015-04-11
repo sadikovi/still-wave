@@ -38,7 +38,7 @@ class Manager(object):
                     images = item["image"]
                     arturl = images[-1]["#text"] if len(images) > 0 else None
                     # build album
-                    _album = Album(None, item["name"], item["artist"], arturl)
+                    _album = Album(None, item["name"], item["artist"], arturl, mbid=item["mbid"])
                     # perform search in database / Pandora
                     try:
                         _album = self.exists(_userid_, _album, pandoraNames=True)
@@ -66,12 +66,25 @@ class Manager(object):
             res = req.loadAlbumInfo(_album.name().lower(), _album.artist().lower())
             if not res.data() or len(res.data()) == 0:
                 # not found on Pandora
-                print "Not found on Pandora"
-                if saveIfNotFound:
-                    print "Saving not found album anyway..."
-                    # generate fake id and push it to db
-                    albumid = "%s#%s" %("SW", misc.newId())
-                    _album.update(albumid, None, 0, None, ispandora=False)
+                print "[!] Not found on Pandora, loading from Last.fm"
+                res = req.loadAlbumInfo(_album.name().lower(), _album.artist().lower(), ispandora=False)
+                if type(res) is Success:
+                    # parse data and load album
+                    explorer = res.data()["album"]
+                    albumid = misc.newId()
+                    tracksinfo = explorer["tracks"]["track"] if "track" in explorer else []
+                    tracks = [tracksinfo] if type(tracksinfo) is DictType else tracksinfo
+                    for track in tracks:
+                        songid = track["mbid"]
+                        _album.addSong(Song(songid))
+                    _album.update(albumid, None, len(tracks), None, ispandora=False)
+                else:
+                    print "Not found on Pandora and Last.fm"
+                    if saveIfNotFound:
+                        print "Saving not found album anyway..."
+                        # generate fake id and push it to db
+                        albumid = "%s#%s" %("SW", misc.newId())
+                        _album.update(albumid, None, 0, None, ispandora=False, hassource=False)
             else:
                 explorer = res.data()["albumExplorer"]
                 # remove weird last Data_track from album
@@ -128,3 +141,16 @@ class Manager(object):
         except BaseException as e:
             # TODO: log error
             return Error(400, str(e))
+
+    def getMyAlbums(self, _userid_):
+        try:
+            liked = self.db.getLikedAlbumIds(_userid_)
+            disliked = self.db.getDislikedAlbumIds(_userid_)
+            albums = []
+            for _id in liked | disliked:
+                _album = self.db.getAlbum(_id)
+                _album.setLiked(self.db.userLikesAlbum(_userid_, _album.id()))
+                albums.append(_album.json())
+            return Success(albums)
+        except BaseException as e:
+            return Error(500, str(e))

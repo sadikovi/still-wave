@@ -132,7 +132,9 @@ class DB(object):
                 info["arturl"],
                 int(info["trackscnt"]),
                 liked=None,
-                ispandora=misc.toBool(info["ispandora"])
+                ispandora=misc.toBool(info["ispandora"]),
+                mbid=info["mbid"],
+                hassource=info["hassource"]
             )
             # get songs
             songids = list(self.getSongsForAlbum(album.id()) or [])
@@ -151,7 +153,9 @@ class DB(object):
             "artist": album.artist(),
             "arturl": album.arturl(),
             "trackscnt": album.trackscnt(),
-            "ispandora": album.ispandora()
+            "ispandora": album.ispandora(),
+            "mbid": album.mbid(),
+            "hassource": album.hassource()
         }
         key = AlbumInfoKey(album.id()).key()
         pipe = self._redis.pipeline()

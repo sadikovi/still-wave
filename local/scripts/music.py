@@ -10,7 +10,7 @@ class Song(object):
 
 # Album
 class Album(object):
-    def __init__(self, id, name, artist, arturl=config.DEFAULT_ALBUM, trackscnt=0, liked=None, ispandora=True):
+    def __init__(self, id, name, artist, arturl=config.DEFAULT_ALBUM, trackscnt=0, liked=None, ispandora=True, mbid=None, hassource=True):
         # main parameters
         self._id, self._name, self._artist = id, name, artist
         # additional parameters
@@ -19,6 +19,10 @@ class Album(object):
         self._ispandora = ispandora
         # songs
         self._songs = []
+        # music brainz id
+        self._mbid = mbid
+        # has source attribute
+        self._hassource = hassource
 
     def id(self):
         return self._id
@@ -44,12 +48,21 @@ class Album(object):
     def liked(self):
         return self._liked
 
-    def update(self, id, arturl, trackscnt, liked, ispandora=True):
+    def mbid(self):
+        return self._mbid
+
+    def hassource(self):
+        return self._hassource
+
+    def update(self, id, arturl, trackscnt, liked, ispandora=True, mbid=None, hassource=True):
         self._id = id
         self._arturl = self._arturl if arturl is None else arturl
         self._trackscnt, self._liked = trackscnt, liked
         # set is pandora flag
         self._ispandora = ispandora
+        # update mbid
+        self._mbid = self._mbid if mbid is None else mbid
+        self._hassource = hassource
 
     def setLiked(self, liked):
         self._liked = liked
@@ -77,5 +90,7 @@ class Album(object):
             "arturl": self.arturl(),
             "liked": self.liked(),
             "trackscnt": self.trackscnt(),
-            "ispandora": self.ispandora()
+            "ispandora": self.ispandora(),
+            "mbid": self.mbid(),
+            "hassource": self.hassource()
         }

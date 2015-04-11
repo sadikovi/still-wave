@@ -2,7 +2,7 @@
 class Collection
     constructor: ->
 
-    searchUnauthorised: ->
+    unauthorised: ->
         map =
             type: "div"
             cls: "ui pl-container-center compact basic segment"
@@ -68,7 +68,7 @@ class Collection
         label =
             type: "span"
             cls: "ui red label"
-            title: "Not found on Pandora"
+            title: "Not found on Pandora and Last.fm"
 
 
     itemContent: (header, meta) ->
@@ -120,6 +120,12 @@ class Collection
             cls: "ui label"
             title: title
 
+    sourceLabel: (title, colour) ->
+        label =
+            type: "span"
+            cls: "ui #{colour} label"
+            title: title
+
     pagesContainer: (pages) ->
         container =
             type: "div"
@@ -137,6 +143,37 @@ class Collection
             type: "div"
             cls: "divider"
             title: "#{sym}"
+
+    # personal page
+    personalFailed: ->
+        map =
+            type: "div"
+            cls: "ui pl-container-center compact basic segment"
+            children:
+                type: "div"
+                cls: "ui header pl-text-thin"
+                children: [
+                    img =
+                        type: "i"
+                        cls: "trophy icon"
+                    content =
+                        type: "div"
+                        cls: "content"
+                        title: "Achievement unlocked"
+                        children:
+                            type: "div"
+                            cls: "sub header"
+                            title: "You have just broken your own personal page. Hoorrrayy!"
+                ]
+
+    personalNotFound: ->
+        map =
+            type: "div"
+            cls: "pl-text-center"
+            children:
+                type: "div"
+                cls: "pl-text-large"
+                title: "You have no albums. Try searching using searchable search"
 
 
 @collection ?= new Collection

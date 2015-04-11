@@ -1,12 +1,7 @@
-# search
-searchBox = document.getElementById "sw-search-box"
-searchInput = document.getElementById "sw-search-box-input"
-searchResults = document.getElementById "sw-search-results"
-searchPages = document.getElementById "sw-search-pages"
-throw "No binding elements found" unless searchBox and searchInput and searchResults and searchPages
+# personal
+myalbums = document.getElementById "sw-my-albums"
+throw "No binding elements found" unless myalbums
 
-lock = (elem) -> elem.setAttribute "disabled", "true"
-unlock = (elem) -> elem.removeAttribute "disabled"
 clear = (elem) -> elem.innerHTML = ""
 setLoading = (elem) -> @util.addClass elem, "loading"
 unsetLoading = (elem) ->@util.removeClass elem, "loading"
@@ -49,22 +44,18 @@ controlPanelErrorLock = (controlpanel) ->
     controlpanel._status.innerHTML = _statusError
     @util.addClass controlpanel._status, "red"
 
-searchQuery = (query, page=1) ->
-    setLoading searchBox
-    lock searchInput
-    clear searchResults
-    clear searchPages
-    @api.search @loader, @util.quote(query), @util.quote(page), (status, result) ->
-        unsetLoading searchBox
-        unlock searchInput
-        data = JSON.parse(result).data
-        [albums, page, pages, maxpage] = [data.results, data.page, data.pages, data.maxpage]
-        # build albums
+refreshMyAlbums = ->
+    # call api to fetch my albums
+    # and draw them on screen
+    clear myalbums
+    setLoading myalbums
+    @api.myalbums @loader, (status, result) ->
+        # success
+        albums = JSON.parse(result).data
         if not @util.isArray(albums)
-            @mapper.parseMapForParent @collection.searchFailed(query), searchResults
+            @mapper.parseMapForParent @collection.personalFailed(), myalbums
         else if albums.length == 0
-            # nothing is found
-            @mapper.parseMapForParent @collection.searchNothing(), searchResults
+            @mapper.parseMapForParent @collection.personalNotFound(), myalbums
         else
             map =
                 type: "div"
@@ -134,26 +125,16 @@ searchQuery = (query, page=1) ->
                 items.push item
             # assign all items to map
             map.children = items
-        @mapper.parseMapForParent map, searchResults
-        # build pages navigation
-        return false if maxpage == 0
-        brpages = []
-        for pg, i in pages
-            tdom = @mapper.parseMapForParent @collection.page(pg, page==pg), null
-            tdom._page = pg
-            @util.addEventListener tdom, "click", (e) -> searchQuery(query, @_page)
-            brpages.push tdom, @collection.divider(if i < pages.length-1 then "-" else "")
-        @mapper.parseMapForParent @collection.pagesContainer(brpages), searchPages
-    , (status, result) ->
-        # error happened
-        unsetLoading searchBox
-        unlock searchInput
-        # build map
+        # unset loading and parse map
+        unsetLoading myalbums
+        @mapper.parseMapForParent map, myalbums
+    (status, result) ->
+        # error
+        unsetLoading myalbums
         if status == 401
-            @mapper.parseMapForParent @collection.unauthorised(), searchResults
+            @mapper.parseMapForParent @collection.unauthorised(), myalbums
         else
-            @mapper.parseMapForParent @collection.searchFailed(query), searchResults
+            @mapper.parseMapForParent @collection.searchFailed(query), myalbums
 
-# add event listener on input box
-util.addEventListener searchInput, "keypress", (e) ->
-    searchQuery e.target.value if e.which == 13 or e.keyCode == 13
+# refresh albums
+refreshMyAlbums()

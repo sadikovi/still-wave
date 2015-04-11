@@ -10,4 +10,6 @@ class API
 
     reset: (loader, albumid, success, error) -> loader.sendrequest "get", "/api/reset?albumid=#{albumid}", {}, null, success, error
 
+    myalbums: (loader, success, error) -> loader.sendrequest "get", "/api/myalbums", {}, null, success, error
+
 @api ?= new API

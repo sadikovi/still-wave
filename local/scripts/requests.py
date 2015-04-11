@@ -6,7 +6,7 @@ import local.scripts.misc as misc
 from local.scripts.result import Error, Success
 
 def sendGet(url, params):
-    url = url+"?"+urllib.urlencode(params.items(), True) if params else url
+    url = url+"?"+urllib.urlencode(params.items()) if params else url
     try:
         request = urllib2.Request(url)
         response = urllib2.urlopen(request)
@@ -34,12 +34,21 @@ def searchAlbum(query, page, limit):
         res.setData(misc.toJson(res.data()))
     return res
 
-def loadAlbumInfo(album, artist):
-    # TODO: escape artist and album
-    artist, album = urllib2.quote(artist), urllib2.quote(album)
-    pandoraUrl = "http://pandora.com/json/music/album/"+artist+"/"+album
-    params = {"explicit": "false"}
-    res = sendGet(pandoraUrl, params)
+def loadAlbumInfo(album, artist, ispandora=True):
+    albumurl, params = None, None
+    if ispandora:
+        albumurl = "http://pandora.com/json/music/album/"+urllib2.quote(artist)+"/"+urllib2.quote(album)
+        params = {"explicit": "false"}
+    else:
+        albumurl = "http://ws.audioscrobbler.com/2.0/"
+        params = {
+            "method": "album.getinfo",
+            "api_key": "c6023aeb55b72d170f999dd3461369e4",
+            "artist": artist,
+            "album": album,
+            "format": "json"
+        }
+    res = sendGet(albumurl, params)
     if type(res) is Success:
         res.setData(misc.toJson(res.data()))
     return res
@@ -52,10 +61,20 @@ def loadAlbumById(albumid):
         res.setData(misc.toJson(res.data()))
     return res
 
-def loadSongById(songid):
-    pandoraUrl = "http://pandora.com/json/music/song/"+songid
-    params = {"explicit": "false"}
-    res = sendGet(pandoraUrl, params)
+def loadSongById(songid, ispandora=True):
+    songurl, params = None, None
+    if ispandora:
+        songurl = "http://pandora.com/json/music/song/"+songid
+        params = {"explicit": "false"}
+    else:
+        songurl = "http://ws.audioscrobbler.com/2.0/"
+        params = {
+            "method": "track.getsimilar",
+            "mbid": songid,
+            "api_key": "c6023aeb55b72d170f999dd3461369e4",
+            "format": "json"
+        }
+    res = sendGet(songurl, params)
     if type(res) is Success:
         res.setData(misc.toJson(res.data()))
     return res

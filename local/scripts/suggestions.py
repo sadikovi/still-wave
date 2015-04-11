@@ -49,10 +49,11 @@ class RecommendationEngine(object):
                 if len(sim_container) > self._processinglimit:
                     print "[!] Processing limit is reached. No download"
                     continue
-                else:
+                # initialise to empty set
+                similarsongs = set()
+                # check source of the album
+                if album.ispandora():
                     print "[!] Similar songs absent. Load from Pandora"
-                    # initialise to empty set
-                    similarsongs = set()
                     # load song info
                     res = req.loadSongById(song.id())
                     if type(res) is Error:
@@ -66,14 +67,36 @@ class RecommendationEngine(object):
                             itempath = misc.getUrlPath(item["@trackDetailUrl"])
                             pathelems = [misc.unquoteParam(x) for x in itempath.split("/")]
                             if len(pathelems) > 2:
-                                artist, album = pathelems[-3:-1]
-                                sim_container.add((artist, album))
+                                artist, albumname = pathelems[-3:-1]
+                                sim_container.add((artist, albumname))
                                 similarsongs.add(itemid)
                             else:
                                 print "[!] Track detail url %s cant be parsed" %(item["@trackDetailUrl"])
                                 print "[!] Song %s will be ignored" %(item["@shareUrl"])
-                    # add similar songs to the song
-                    self.db.addSimilarSongs(song.id(), similarsongs)
+                else:
+                    print "[!] Similar songs absent. Load from Last.fm"
+                    print "[!] Functionality under development"
+                    """
+                    mbid = album.mbid()
+                    if not mbid:
+                        print "[!] Album mbid is empty or None. Cant do anything about it"
+                        continue
+                    # fetch data from last.fm
+                    res = req.loadSongById(song.id(), ispandora=False)
+                    if type(res) is Error:
+                        print "[!] Request for similar songs for %s (%s-%s) failed" %(song.id(), album.name(), album.artist())
+                    elif type(res) is Success and res.data():
+                        similar = data["similartracks"]
+                        tracks = similar["track"] if "track" in similar else []
+                        tracks = [tracks] if type(tracks) is DictType else tracks
+                        for track in tracks:
+                            trackid = track["mbid"]
+                            artist, album = track["artist"]["name"], None
+                            sim_container.add((artist, album))
+                            similarsongs.add(trackid)
+                    """
+                # add similar songs to the song
+                self.db.addSimilarSongs(song.id(), similarsongs)
             # songs are found in Redis or found on Pandora / dont exist
             for x in similarsongs:
                 totalsongs.append(x) if x else None
@@ -134,6 +157,6 @@ class RecommendationEngine(object):
     def recommendationsForUser(self, _userid):
         try:
             return Success(self.getRecommendations(_userid))
-        except BaseException as e:
+        except KeyError as e:
             print "[!] Error during calculating recommendations: %s" %(str(e))
             return Error(500, str(e))
